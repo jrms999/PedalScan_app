@@ -1,42 +1,42 @@
-from fastapi import FastAPI, UploadFile, File
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import uvicorn
 from io import BytesIO
-from PIL import Image
-import numpy as np
-import random
 
-app = FastAPI()
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from PIL import Image, UnidentifiedImageError
+
+app = FastAPI(title="PedalScan prototype API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
+    allow_origins=["*"],  # Local prototype only; restrict before deployment.
+    allow_methods=["POST"],
     allow_headers=["*"],
 )
 
-class Result(BaseModel):
-    name: str
-    brand: str
-    value: float
+MAX_IMAGE_BYTES = 8 * 1024 * 1024
 
-def read_imagefile(file) -> Image.Image:
-    image = Image.open(BytesIO(file))
-    return image.resize((224, 224))
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 
 @app.post("/identify")
 async def identify_pedal(file: UploadFile = File(...)):
-    contents = await file.read()
-    image = read_imagefile(contents)
+    if file.content_type not in {"image/jpeg", "image/png", "image/webp"}:
+        raise HTTPException(status_code=415, detail="Upload a JPEG, PNG, or WebP image.")
 
-    dummy_results = [
-        {"name": "Boss DS-1", "brand": "Boss", "value": 45.00},
-        {"name": "Ibanez TS9", "brand": "Ibanez", "value": 89.99},
-        {"name": "EHX Big Muff", "brand": "EHX", "value": 72.00},
-    ]
-    result = random.choice(dummy_results)
-    return result
+    contents = await file.read(MAX_IMAGE_BYTES + 1)
+    if len(contents) > MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=413, detail="Image must be 8 MB or smaller.")
 
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    try:
+        with Image.open(BytesIO(contents)) as image:
+            image.verify()
+    except (UnidentifiedImageError, OSError, ValueError):
+        raise HTTPException(status_code=400, detail="The uploaded file is not a valid image.")
+
+    return {
+        "status": "demo",
+        "message": "Image received. Pedal recognition and pricing are not implemented yet.",
+    }
