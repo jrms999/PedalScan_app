@@ -6,7 +6,7 @@ PedalScan is intended to help musicians recognise pedals and, eventually, compar
 
 ## Run locally
 
-1. From `guitar_pedal_identifier_app/backend`, create a Python environment, then run `pip install -r requirements.txt` and `uvicorn main:app --reload`.
+1. From `guitar_pedal_identifier_app/backend`, create a Python environment, then run `pip install -r requirements.txt` and `uvicorn main:app --reload --host 0.0.0.0` so a physical phone on the same LAN can reach the API.
 2. Confirm the API at `http://localhost:8000/health`.
 3. From `guitar_pedal_identifier_frontend`, run `npm install` and `npm start`.
 4. Set `EXPO_PUBLIC_API_URL` to the URL that the device can reach. `http://localhost:8000` works for a local iOS simulator; a physical phone needs your computer's LAN address. The API and device must be on the same network for local testing.
