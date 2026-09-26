@@ -14,6 +14,7 @@ app.add_middleware(
 )
 
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
+MAX_IMAGE_PIXELS = 20_000_000
 
 
 @app.get("/health")
@@ -32,8 +33,10 @@ async def identify_pedal(file: UploadFile = File(...)):
 
     try:
         with Image.open(BytesIO(contents)) as image:
+            if image.width * image.height > MAX_IMAGE_PIXELS:
+                raise HTTPException(status_code=413, detail="Image dimensions are too large.")
             image.verify()
-    except (UnidentifiedImageError, OSError, ValueError):
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
         raise HTTPException(status_code=400, detail="The uploaded file is not a valid image.")
 
     return {

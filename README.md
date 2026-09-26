@@ -23,6 +23,14 @@ PedalScan is intended to help musicians recognise pedals and, eventually, compar
 1. Collect a small, permission-cleared set of labelled pedal photos and define an evaluation split.
 2. Add a baseline model or explicit visual matching approach and report its accuracy, including an “unknown” result.
 3. Add version and condition checks before any price estimate; cite the source and date of market data.
-4. Add repeatable API and mobile integration tests, then tighten CORS and deployment configuration.
+4. Run the API contract tests below and add device integration tests, then tighten CORS and deployment configuration.
 
 The original product and business concept can be developed separately from this prototype. No payment or marketplace feature is present.
+
+## API contract tests
+
+From `guitar_pedal_identifier_app/backend`, install `requirements.txt` and run `python -m pytest test_main.py -q`. The tests cover a valid image, malformed and wrong-type uploads, the 8 MB bound, and the demo response contract. The API also limits decoded image dimensions to 20 megapixels. These tests do not establish camera compatibility on a physical device or recognition accuracy.
+
+## API contract tests
+
+From `guitar_pedal_identifier_app/backend`, install `test-requirements.txt` and run `python -m pytest test_main.py -q`. The tests cover a valid image, malformed and wrong-type uploads, the 8 MB bound, and the demo response contract. The API also limits decoded image dimensions to 20 megapixels. These tests do not establish camera compatibility on a physical device or recognition accuracy.
