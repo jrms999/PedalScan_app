@@ -2,39 +2,47 @@ import React, { useState } from 'react';
 import { View, Text, Button, Image, ActivityIndicator, StyleSheet, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
+const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
+
 export default function App() {
   const [image, setImage] = useState(null);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const pickImage = async () => {
-    let result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 1,
-      base64: true,
-    });
-
-    if (!result.cancelled) {
-      setImage(result.uri);
-      identifyPedal(result.base64);
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Camera permission', 'Allow camera access to photograph a pedal.');
+      return;
     }
+
+    const selection = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+    if (selection.canceled || !selection.assets?.[0]) return;
+
+    const asset = selection.assets[0];
+    setImage(asset.uri);
+    setResult(null);
+    await uploadImage(asset);
   };
 
-  const identifyPedal = async (base64Image) => {
+  const uploadImage = async (asset) => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8000/identify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ image: base64Image })
+      const form = new FormData();
+      form.append('file', {
+        uri: asset.uri,
+        name: asset.fileName || 'pedal.jpg',
+        type: asset.mimeType || 'image/jpeg',
       });
-
+      const response = await fetch(`${API_BASE}/identify`, {
+        method: 'POST',
+        body: form,
+      });
       const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Upload failed');
       setResult(data);
     } catch (error) {
-      Alert.alert("Error", "Failed to identify pedal");
+      Alert.alert('Upload failed', error.message || 'Check the API address and try again.');
     } finally {
       setLoading(false);
     }
@@ -42,31 +50,20 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      <Button title="Capture Pedal Image" onPress={pickImage} />
+      <Text style={styles.title}>PedalScan prototype</Text>
+      <Button title="Photograph a pedal" onPress={pickImage} disabled={loading} />
       {image && <Image source={{ uri: image }} style={styles.image} />}
-      {loading && <ActivityIndicator size="large" color="#0000ff" />}
-      {result && (
-        <View style={styles.result}>
-          <Text style={styles.resultText}>Name: {result.name}</Text>
-          <Text style={styles.resultText}>Brand: {result.brand}</Text>
-          <Text style={styles.resultText}>Estimated Value: ${result.estimated_value}</Text>
-        </View>
-      )}
+      {loading && <ActivityIndicator size="large" />}
+      {result && <Text style={styles.result}>{result.message}</Text>}
+      <Text style={styles.note}>Image upload demo. Recognition and pricing are planned.</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20
-  },
-  image: {
-    width: 200, height: 200, marginVertical: 20
-  },
-  result: {
-    marginTop: 20, padding: 10, backgroundColor: '#f0f0f0', borderRadius: 10
-  },
-  resultText: {
-    fontSize: 16
-  }
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  title: { fontSize: 24, fontWeight: '600', marginBottom: 16 },
+  image: { width: 200, height: 200, marginVertical: 20 },
+  result: { fontSize: 16, textAlign: 'center', marginBottom: 12 },
+  note: { fontSize: 12, color: '#555', textAlign: 'center' },
 });
