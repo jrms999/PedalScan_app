@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Button, Image, ActivityIndicator, StyleSheet, Alert } from 'react-native';
+import { View, Text, Button, Image, ActivityIndicator, StyleSheet, Alert, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
@@ -29,11 +29,17 @@ export default function App() {
     setLoading(true);
     try {
       const form = new FormData();
-      form.append('file', {
-        uri: asset.uri,
-        name: asset.fileName || 'pedal.jpg',
-        type: asset.mimeType || 'image/jpeg',
-      });
+      const name = asset.fileName || 'pedal.jpg';
+      if (Platform.OS === 'web') {
+        const blob = asset.file || await (await fetch(asset.uri)).blob();
+        form.append('file', blob, name);
+      } else {
+        form.append('file', {
+          uri: asset.uri,
+          name,
+          type: asset.mimeType || 'image/jpeg',
+        });
+      }
       const response = await fetch(`${API_BASE}/identify`, {
         method: 'POST',
         body: form,
